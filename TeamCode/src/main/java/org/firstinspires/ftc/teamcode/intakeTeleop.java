@@ -31,6 +31,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -55,6 +56,7 @@ public class intakeTeleop extends LinearOpMode {
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
     private DcMotor left, right;
+    private CRServo mainServo;
 
     @Override
     public void runOpMode() {
@@ -64,6 +66,7 @@ public class intakeTeleop extends LinearOpMode {
         // Initialize the hardware variables.
         left  = hardwareMap.get(DcMotor.class, "left");
         right = hardwareMap.get(DcMotor.class, "right");
+        mainServo = hardwareMap.get(CRServo.class, "servo");
 
         left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -78,12 +81,17 @@ public class intakeTeleop extends LinearOpMode {
 
             left.setPower(0);
             right.setPower(0);
+            mainServo.setPower(0);
             if (gamepad1.y) {
                 left.setPower(1.0);
                 right.setPower(-1.0);
             } else if (gamepad1.a) {
                 left.setPower(-1.0);
                 right.setPower(1.0);
+            } else if (gamepad1.b) {
+                mainServo.setPower(0.7);
+            } else if (gamepad1.x) {
+                mainServo.setPower(-0.7);
             }
         }
     }

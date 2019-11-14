@@ -29,14 +29,11 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
 
 
 /**
@@ -52,13 +49,12 @@ import com.qualcomm.robotcore.util.Range;
  * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
  */
 
-@TeleOp(name="Teleop", group="Linear Opmode")
-public class teleop extends LinearOpMode {
+@TeleOp(name="intakeTeleop", group="Linear Opmode")
+public class intakeTeleop extends LinearOpMode {
 
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
-    private DcMotor leftFront, rightFront, leftRear, rightRear;
-    private Servo armServo, grabServo;
+    private DcMotor left, right;
 
     @Override
     public void runOpMode() {
@@ -66,17 +62,11 @@ public class teleop extends LinearOpMode {
         telemetry.update();
 
         // Initialize the hardware variables.
-        leftFront  = hardwareMap.get(DcMotor.class, "leftFront");
-        rightFront = hardwareMap.get(DcMotor.class, "rightFront");
-        leftRear = hardwareMap.get(DcMotor.class, "leftRear");
-        rightRear = hardwareMap.get(DcMotor.class, "rightRear");
-        armServo = hardwareMap.get(Servo.class, "servo");
-        grabServo = hardwareMap.get(Servo.class,"grabServo");
+        left  = hardwareMap.get(DcMotor.class, "left");
+        right = hardwareMap.get(DcMotor.class, "right");
 
-        leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
@@ -86,46 +76,15 @@ public class teleop extends LinearOpMode {
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
 
-            if (gamepad1.y)
-                armServo.setPosition(1.0);
-            else if (gamepad1.a)
-                armServo.setPosition(0);
-            else
-                //The value 0.523 is the value to make the servo hold its position.
-                armServo.setPosition(0.523);
-
-            if (gamepad1.x)
-                grabServo.setPosition(1.0);
-            else if (gamepad1.b)
-                grabServo.setPosition(0);
-            else
-                //Same with above, this makes it hold its position.
-                grabServo.setPosition(0.50);
-
-            double r = Math.hypot(gamepad1.left_stick_x, -gamepad1.left_stick_y);
-            double robotAngle = Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4;
-            double rightX = gamepad1.right_stick_x;
-            double v1 = r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) + Math.PI / 4) + gamepad1.right_stick_x;
-            double v2 = -r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4) + gamepad1.right_stick_x;
-            double v3 = r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4) + gamepad1.right_stick_x;
-            double v4 = -r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) + Math.PI / 4) + gamepad1.right_stick_x;
-
-
-            if (gamepad1.right_bumper) {
-                v1 /= 0.5;
-                v2 /= 0.5;
-                v3 /= 0.5;
-                v4 /= 0.5;
+            left.setPower(0);
+            right.setPower(0);
+            if (gamepad1.y) {
+                left.setPower(1.0);
+                right.setPower(-1.0);
+            } else if (gamepad1.a) {
+                left.setPower(-1.0);
+                right.setPower(1.0);
             }
-
-            leftFront.setPower(v1);
-            rightFront.setPower(v2);
-            leftRear.setPower(v3);
-            rightRear.setPower(v4);
-
-
-            telemetry.addData("coords", "x (%.2f), y (%.2f)", gamepad1.left_stick_x, -gamepad1.left_stick_y);
-            telemetry.update();
         }
     }
 }

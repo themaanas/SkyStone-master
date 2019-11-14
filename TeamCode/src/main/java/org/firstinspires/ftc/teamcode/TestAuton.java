@@ -205,7 +205,6 @@ public class TestAuton extends LinearOpMode {
         rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        float offsetAngle = 0;
         int block = 0;
 
         // Wait for the game to start (driver presses PLAY)

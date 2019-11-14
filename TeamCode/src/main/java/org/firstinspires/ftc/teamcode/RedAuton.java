@@ -73,12 +73,13 @@ public class RedAuton extends LinearOpMode {
     private static final boolean PHONE_IS_PORTRAIT = false;
 
     private static final float mmPerInch        = 25.4f;
-    private static final float mmTargetHeight   = (6) * mmPerInch;
     private static final float stoneZ = 2.00f * mmPerInch;
 
     private OpenGLMatrix lastLocation = null;
     private VuforiaLocalizer vuforia = null;
     private boolean targetVisible = false;
+    private VuforiaTrackables targetsSkyStone;
+    private List<VuforiaTrackable> allTrackables;
     private float phoneXRotate = 0;
     private float phoneYRotate = 0;
     private float phoneZRotate = 0;
@@ -97,76 +98,9 @@ public class RedAuton extends LinearOpMode {
     private Servo grabServo;
     private int statusNum = 0;
 
-    // The IMU sensor object
-    private BNO055IMU imu;
-
-    // State used for updating telemetry
-    private Orientation angles;
-    private Acceleration gravity;
-
     public void runOpMode() {
 
-        int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
-        VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
-
-        // VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters();
-
-        parameters.vuforiaLicenseKey = VUFORIA_KEY;
-        parameters.cameraDirection   = CAMERA_CHOICE;
-
-        //  Instantiate the Vuforia engine
-        vuforia = ClassFactory.getInstance().createVuforia(parameters);
-
-        // Load the data sets for the trackable objects. These particular data
-        // sets are stored in the 'assets' part of our application.
-        VuforiaTrackables targetsSkyStone = this.vuforia.loadTrackablesFromAsset("Skystone");
-
-        VuforiaTrackable stoneTarget = targetsSkyStone.get(0);
-        stoneTarget.setName("Stone Target");
-
-        // For convenience, gather together all the trackable objects in one easily-iterable collection */
-        List<VuforiaTrackable> allTrackables = new ArrayList<VuforiaTrackable>();
-        allTrackables.addAll(targetsSkyStone);
-
-        stoneTarget.setLocation(OpenGLMatrix
-                .translation(0, 0, stoneZ)
-                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, -90)));
-
-        if (CAMERA_CHOICE == BACK) {
-            phoneYRotate = -90;
-        } else {
-            phoneYRotate = 90;
-        }
-
-        if (PHONE_IS_PORTRAIT) {
-            phoneXRotate = 90 ;
-        }
-
-        final float CAMERA_FORWARD_DISPLACEMENT  = 4.0f * mmPerInch;   // eg: Camera is 4 Inches in front of robot center
-        final float CAMERA_VERTICAL_DISPLACEMENT = 8.0f * mmPerInch;   // eg: Camera is 8 Inches above ground
-        final float CAMERA_LEFT_DISPLACEMENT     = 0;     // eg: Camera is ON the robot's center line
-
-        OpenGLMatrix robotFromCamera = OpenGLMatrix
-                .translation(CAMERA_FORWARD_DISPLACEMENT, CAMERA_LEFT_DISPLACEMENT, CAMERA_VERTICAL_DISPLACEMENT)
-                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, YZX, DEGREES, phoneYRotate, phoneZRotate, phoneXRotate));
-
-        /**  Let all the trackable listeners know where the phone is.  */
-        for (VuforiaTrackable trackable : allTrackables) {
-            ((VuforiaTrackableDefaultListener) trackable.getListener()).setPhoneInformation(robotFromCamera, parameters.cameraDirection);
-        }
-
-
-
-        telemetry.addData("Status", "Initialized");
-        telemetry.update();
-
-        BNO055IMU.Parameters imuParameters = new BNO055IMU.Parameters();
-        imuParameters.angleUnit           = BNO055IMU.AngleUnit.DEGREES;
-        imuParameters.accelUnit           = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
-        imuParameters.calibrationDataFile = "BNO055IMUCalibration.json"; // see the calibration sample opmode
-        imuParameters.loggingEnabled      = true;
-        imuParameters.loggingTag          = "IMU";
-        imuParameters.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
+        initVision();
 
         // Initialize the hardware variables. Note that the strings used here as parameters
         // to 'get' must correspond to the names assigned during the robot configuration
@@ -199,14 +133,11 @@ public class RedAuton extends LinearOpMode {
 
         rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        float offsetAngle = 0;
         int block = 0;
 
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
         while (opModeIsActive()) {
-//            angles = imu.getAngularOrientation().toAxesReference(AxesReference.INTRINSIC).toAxesOrder(AxesOrder.ZYX);
             switch (statusNum) {
 
                 case 0:
@@ -216,25 +147,24 @@ public class RedAuton extends LinearOpMode {
                 case 2:
                     targetsSkyStone.activate();
 
-                    runtime.reset();
-
-                    while (runtime.time() < 1)
-
                     targetVisible = false;
-                    for (VuforiaTrackable trackable : allTrackables) {
-                        if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
-                            telemetry.addData("Visible Target", trackable.getName());
-                            targetVisible = true;
 
-                            // getUpdatedRobotLocation() will return null if no new information is available since
-                            // the last time that call was made, or if the trackable is not currently visible.
-                            OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
-                            if (robotLocationTransform != null) {
-                                lastLocation = robotLocationTransform;
+                    do {
+                        runtime.reset();
+
+                        while (runtime.time() < 1)
+
+                        for (VuforiaTrackable trackable : allTrackables) {
+                            if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
+                                //Detected the
+                                targetVisible = true;
+                                break;
+                            } else {
+
                             }
-                            break;
                         }
-                    }
+                    } while (!targetVisible && opModeIsActive());
+
 
                     // Provide feedback as to where the robot is located (if we know).
                     if (targetVisible) {
@@ -250,8 +180,7 @@ public class RedAuton extends LinearOpMode {
                         block = 16;
                         encoderDrive(0.2,1,"f");
                         encoderDrive(0.2, 2.5, "r");
-                    }
-                    else {
+                    } else {
                         telemetry.addData("Visible Target", "none");
                         encoderDrive(0.2, 7, "b");
                         runtime.reset();
@@ -336,28 +265,78 @@ public class RedAuton extends LinearOpMode {
                 default:
                     break;
             }
-
-//            telemetry.addData("Servo", "value (%f)", angles.firstAngle);
-//            telemetry.update();
         }
 
-//        while (angles.firstAngle < 86) {
-//            angles = imu.getAngularOrientation().toAxesReference(AxesReference.INTRINSIC).toAxesOrder(AxesOrder.ZYX);
-//        }
-//        leftDrive.setPower(0);
-//        rightDrive.setPower(0);
-//        retractFromLander();
-//        encoderDrive(DRIVE_SPEED,  4,  4);
 
     }
 
-    String formatAngle(AngleUnit angleUnit, double angle) {
-        return formatDegrees(AngleUnit.DEGREES.fromUnit(angleUnit, angle));
+    /*
+
+    Initialize the vision targeting system.
+
+    */
+
+    public void initVision() {
+        int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
+
+        // VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters();
+
+        parameters.vuforiaLicenseKey = VUFORIA_KEY;
+        parameters.cameraDirection   = CAMERA_CHOICE;
+
+        //  Instantiate the Vuforia engine
+        vuforia = ClassFactory.getInstance().createVuforia(parameters);
+
+        // Load the data sets for the trackable objects. These particular data
+        // sets are stored in the 'assets' part of our application.
+        targetsSkyStone = this.vuforia.loadTrackablesFromAsset("Skystone");
+
+        VuforiaTrackable stoneTarget = targetsSkyStone.get(0);
+        stoneTarget.setName("Stone Target");
+
+        // For convenience, gather together all the trackable objects in one easily-iterable collection */
+        allTrackables = new ArrayList<VuforiaTrackable>();
+        allTrackables.addAll(targetsSkyStone);
+
+        stoneTarget.setLocation(OpenGLMatrix
+                .translation(0, 0, stoneZ)
+                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, -90)));
+
+        if (CAMERA_CHOICE == BACK) {
+            phoneYRotate = -90;
+        } else {
+            phoneYRotate = 90;
+        }
+
+        if (PHONE_IS_PORTRAIT) {
+            phoneXRotate = 90 ;
+        }
+
+        final float CAMERA_FORWARD_DISPLACEMENT  = 4.0f * mmPerInch;   // eg: Camera is 4 Inches in front of robot center
+        final float CAMERA_VERTICAL_DISPLACEMENT = 8.0f * mmPerInch;   // eg: Camera is 8 Inches above ground
+        final float CAMERA_LEFT_DISPLACEMENT     = 0;     // eg: Camera is ON the robot's center line
+
+        OpenGLMatrix robotFromCamera = OpenGLMatrix
+                .translation(CAMERA_FORWARD_DISPLACEMENT, CAMERA_LEFT_DISPLACEMENT, CAMERA_VERTICAL_DISPLACEMENT)
+                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, YZX, DEGREES, phoneYRotate, phoneZRotate, phoneXRotate));
+
+        /**  Let all the trackable listeners know where the phone is.  */
+        for (VuforiaTrackable trackable : allTrackables) {
+            ((VuforiaTrackableDefaultListener) trackable.getListener()).setPhoneInformation(robotFromCamera, parameters.cameraDirection);
+        }
+
+
+
+        telemetry.addData("Status", "Initialized");
+        telemetry.update();
     }
 
-    String formatDegrees(double degrees){
-        return String.format(Locale.getDefault(), "%.1f", AngleUnit.DEGREES.normalize(degrees));
-    }
+    /*
+
+    Lateral drive function, takes "f","b","r","l" for directions.
+
+    */
 
     public void encoderDrive(double speed, double inches, String direction) {
         // Ensure that the opmode is still active

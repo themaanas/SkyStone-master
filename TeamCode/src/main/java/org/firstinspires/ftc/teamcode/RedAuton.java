@@ -33,7 +33,9 @@ import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -42,6 +44,8 @@ import org.firstinspires.ftc.robotcore.external.matrices.OpenGLMatrix;
 import org.firstinspires.ftc.robotcore.external.matrices.VectorF;
 import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackable;
@@ -73,13 +77,12 @@ public class RedAuton extends LinearOpMode {
     private static final boolean PHONE_IS_PORTRAIT = false;
 
     private static final float mmPerInch        = 25.4f;
+    private static final float mmTargetHeight   = (6) * mmPerInch;
     private static final float stoneZ = 2.00f * mmPerInch;
 
     private OpenGLMatrix lastLocation = null;
     private VuforiaLocalizer vuforia = null;
     private boolean targetVisible = false;
-    private VuforiaTrackables targetsSkyStone;
-    private List<VuforiaTrackable> allTrackables;
     private float phoneXRotate = 0;
     private float phoneYRotate = 0;
     private float phoneZRotate = 0;
@@ -95,188 +98,19 @@ public class RedAuton extends LinearOpMode {
     private DcMotor leftRear;
     private DcMotor rightRear;
     private Servo armServo;
-    private Servo grabServo;
+    private Servo rightArmServo;
     private int statusNum = 0;
 
+    // The IMU sensor object
+    private BNO055IMU imu;
+
+    // State used for updating telemetry
+    private Orientation angles;
+    private Acceleration gravity;
+
+    @Override
     public void runOpMode() {
 
-        initVision();
-
-        // Initialize the hardware variables. Note that the strings used here as parameters
-        // to 'get' must correspond to the names assigned during the robot configuration
-        // step (using the FTC Robot Controller app on the phone).
-        leftFront = hardwareMap.get(DcMotor.class, "leftFront");
-        rightFront = hardwareMap.get(DcMotor.class, "rightFront");
-        leftRear = hardwareMap.get(DcMotor.class, "leftRear");
-        rightRear = hardwareMap.get(DcMotor.class, "rightRear");
-        armServo = hardwareMap.get(Servo.class, "servo");
-        grabServo = hardwareMap.get(Servo.class, "grabServo");
-
-        leftFront.setDirection(DcMotor.Direction.REVERSE);
-        leftRear.setDirection(DcMotor.Direction.REVERSE);
-        rightFront.setDirection(DcMotor.Direction.FORWARD);
-        rightRear.setDirection(DcMotor.Direction.FORWARD);
-
-        leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        int block = 0;
-
-        // Wait for the game to start (driver presses PLAY)
-        waitForStart();
-        while (opModeIsActive()) {
-            switch (statusNum) {
-
-                case 0:
-                    encoderDrive(0.4, 22, "r");
-                case 1:
-                    encoderDrive(0.2, 3 , "f");
-                case 2:
-                    targetsSkyStone.activate();
-
-                    targetVisible = false;
-
-                    do {
-                        runtime.reset();
-
-                        while (runtime.time() < 1)
-
-                        for (VuforiaTrackable trackable : allTrackables) {
-                            if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
-                                //Detected the
-                                targetVisible = true;
-                                break;
-                            } else {
-
-                            }
-                        }
-                    } while (!targetVisible && opModeIsActive());
-
-
-                    // Provide feedback as to where the robot is located (if we know).
-                    if (targetVisible) {
-                        // express position (translation) of robot in inches.
-                        VectorF translation = lastLocation.getTranslation();
-                        telemetry.addData("Pos (in)", "{X, Y, Z} = %.1f, %.1f, %.1f",
-                                translation.get(0) / mmPerInch, translation.get(1) / mmPerInch, translation.get(2) / mmPerInch);
-
-                        // express the rotation of the robot in degrees.
-                        Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
-                        telemetry.addData("Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", rotation.firstAngle, rotation.secondAngle, rotation.thirdAngle);
-                        telemetry.update();
-                        block = 16;
-                        encoderDrive(0.2,1,"f");
-                        encoderDrive(0.2, 2.5, "r");
-                    } else {
-                        telemetry.addData("Visible Target", "none");
-                        encoderDrive(0.2, 7, "b");
-                        runtime.reset();
-
-                        while (runtime.time() < 1)
-
-                        for (VuforiaTrackable trackable : allTrackables) {
-                            if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
-                                telemetry.addData("Visible Target", trackable.getName());
-                                targetVisible = true;
-
-                                // getUpdatedRobotLocation() will return null if no new information is available since
-                                // the last time that call was made, or if the trackable is not currently visible.
-                                OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
-                                if (robotLocationTransform != null) {
-                                    lastLocation = robotLocationTransform;
-                                }
-                                break;
-                            }
-                        }
-
-                        if (targetVisible) {
-                            // express position (translation) of robot in inches.
-                            VectorF translation = lastLocation.getTranslation();
-                            telemetry.addData("Pos (in)", "{X, Y, Z} = %.1f, %.1f, %.1f",
-                                    translation.get(0) / mmPerInch, translation.get(1) / mmPerInch, translation.get(2) / mmPerInch);
-
-                            // express the rotation of the robot in degrees.
-                            Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
-                            telemetry.addData("Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", rotation.firstAngle, rotation.secondAngle, rotation.thirdAngle);
-                            telemetry.update();
-                            block = 8;
-                            encoderDrive(0.2, 1, "r");
-                        }
-                        else {
-                            telemetry.addData("Visible Target", "none");
-                            encoderDrive(0.2, 6, "b");
-                            encoderDrive(0.2, 1, "r");
-
-
-                        }
-                    }
-
-
-                    statusNum++;
-
-                case 3:
-
-                    armServo.setPosition(0);
-                    grabServo.setPosition(1.0);
-                    sleep(2150);
-
-
-                    grabServo.setPosition(0.5);
-                    armServo.setPosition(0.5);
-                    statusNum++;
-                case 4:
-                    encoderDrive(0.2, 2, "r");
-                    grabServo.setPosition(0);
-                    sleep(2300);
-                    grabServo.setPosition(0.3);
-                    armServo.setPosition(1.0);
-                    sleep(2200);
-                    armServo.setPosition(0.5);
-                    statusNum++;
-                case 5:
-                    encoderDrive(0.3, 3, "l");
-                    encoderDrive(0.5, 68 + block, "b");
-                    encoderDrive(0.3, 3, "r");
-                    armServo.setPosition(0);
-                    sleep(2200);
-                    armServo.setPosition(0.5);
-                    grabServo.setPosition(1.0);
-                    sleep(1000);
-                    grabServo.setPosition(0.5);
-                    armServo.setPosition(1.0);
-                    sleep(2200);
-                    armServo.setPosition(0.5);
-                    encoderDrive(0.3, 6, "l");
-                    encoderDrive(0.5, 31 + block, "f");
-                    statusNum++;
-                default:
-                    break;
-            }
-        }
-
-
-    }
-
-    /*
-
-    Initialize the vision targeting system.
-
-    */
-
-    public void initVision() {
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
 
@@ -290,13 +124,13 @@ public class RedAuton extends LinearOpMode {
 
         // Load the data sets for the trackable objects. These particular data
         // sets are stored in the 'assets' part of our application.
-        targetsSkyStone = this.vuforia.loadTrackablesFromAsset("Skystone");
+        VuforiaTrackables targetsSkyStone = this.vuforia.loadTrackablesFromAsset("Skystone");
 
         VuforiaTrackable stoneTarget = targetsSkyStone.get(0);
         stoneTarget.setName("Stone Target");
 
         // For convenience, gather together all the trackable objects in one easily-iterable collection */
-        allTrackables = new ArrayList<VuforiaTrackable>();
+        List<VuforiaTrackable> allTrackables = new ArrayList<VuforiaTrackable>();
         allTrackables.addAll(targetsSkyStone);
 
         stoneTarget.setLocation(OpenGLMatrix
@@ -330,13 +164,309 @@ public class RedAuton extends LinearOpMode {
 
         telemetry.addData("Status", "Initialized");
         telemetry.update();
+
+        // Initialize the hardware variables. Note that the strings used here as parameters
+        // to 'get' must correspond to the names assigned during the robot configuration
+        // step (using the FTC Robot Controller app on the phone).
+        leftFront = hardwareMap.get(DcMotor.class, "leftFront");
+        rightFront = hardwareMap.get(DcMotor.class, "rightFront");
+        leftRear = hardwareMap.get(DcMotor.class, "leftRear");
+        rightRear = hardwareMap.get(DcMotor.class, "rightRear");
+        armServo = hardwareMap.get(Servo.class, "arm");
+        rightArmServo = hardwareMap.get(Servo.class, "right");
+
+        leftFront.setDirection(DcMotor.Direction.REVERSE);
+        leftRear.setDirection(DcMotor.Direction.REVERSE);
+        rightFront.setDirection(DcMotor.Direction.FORWARD);
+        rightRear.setDirection(DcMotor.Direction.FORWARD);
+
+        leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        int block = 0;
+
+        // Wait for the game to start (driver presses PLAY)
+        waitForStart();
+
+        encoderDrive(0.4, 22, "f");
+        encoderDrive(0.3, 4, "r");
+
+
+
+        //STONE DETECTION
+        String stonePosition = "left";
+
+        targetsSkyStone.activate();
+
+        runtime.reset();
+
+        while (runtime.time() < 2)
+            targetVisible = false;
+
+        for (VuforiaTrackable trackable : allTrackables) {
+            if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
+                telemetry.addData("Visible Target", trackable.getName());
+                targetVisible = true;
+
+                // getUpdatedRobotLocation() will return null if no new information is available since
+                // the last time that call was made, or if the trackable is not currently visible.
+                OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
+                if (robotLocationTransform != null) {
+                    lastLocation = robotLocationTransform;
+                }
+                break;
+            }
+        }
+
+        // Provide feedback as to where the robot is located (if we know).
+        if (targetVisible) {
+            // express position (translation) of robot in inches.
+            // -21.4, -3.4, -4.0
+            //
+            VectorF translation = lastLocation.getTranslation();
+            telemetry.addData("Pos (in)", "{X, Y, Z} = %.1f, %.1f, %.1f",
+                    translation.get(0) / mmPerInch, translation.get(1) / mmPerInch, translation.get(2) / mmPerInch);
+            telemetry.update();
+            if (translation.get(1) < 0) {
+                stonePosition = "middle";
+            } else if (translation.get(1) > 0) {
+                stonePosition = "right";
+            }
+        }
+
+        switch (stonePosition) {
+            case "left":
+                encoderDrive(0.3, 8, "l");
+                encoderDrive(0.3, 12, "f");
+                armServo.setPosition(0);
+                sleep(2000);
+                encoderDrive(0.4, 10, "b");
+                encoderDrive(0.4, 66, "r");
+                armServo.setPosition(1.0);
+                sleep(2000);
+                encoderDrive(0.4, 28, "l");
+//                encoderDrive(0.4, 75, "r");
+//                encoderDrive(0.2, 12, "f");
+//                rightArmServo.setPosition(1.0);
+//                sleep(2000);
+//                encoderDrive(0.4, 10, "b");
+//                encoderDrive(0.4, 73, "l");
+//                encoderDrive(0.4, 10, "f");
+//                rightArmServo.setPosition(0);
+//                sleep(2000);
+//                encoderDrive(0.4, 16, "r");
+                break;
+            case "middle":
+                encoderDrive(0.2, 1, "l");
+                encoderDrive(0.2, 12, "f");
+                armServo.setPosition(0);
+                sleep(2000);
+                encoderDrive(0.4, 12, "b");
+                encoderDrive(0.4, 63, "r");
+                armServo.setPosition(1.0);
+                sleep(2000);
+                encoderDrive(0.4, 28, "l");
+//                encoderDrive(0.4, 82, "r");
+//                encoderDrive(0.2, 12, "f");
+//                rightArmServo.setPosition(1.0);
+//                sleep(2000);
+//                encoderDrive(0.4, 10, "b");
+//                encoderDrive(0.4, 80, "l");
+//                encoderDrive(0.4, 8, "f");
+//                rightArmServo.setPosition(0);
+//                sleep(2000);
+//                encoderDrive(0.4, 16, "r");
+                break;
+            case "right":
+                encoderDrive(0.2, 8, "r");
+                encoderDrive(0.2, 12, "f");
+                armServo.setPosition(0);
+                sleep(2000);
+                encoderDrive(0.4, 12, "b");
+                encoderDrive(0.4, 57, "r");
+                armServo.setPosition(1.00);
+                sleep(2000);
+                encoderDrive(0.4, 28, "l");
+//                encoderDrive(0.4, 75, "l");
+//                encoderDrive(0.2, 12, "f");
+//                armServo.setPosition(0);
+//                sleep(2000);
+//                encoderDrive(0.4, 10, "b");
+//                encoderDrive(0.4, 73, "r");
+//                encoderDrive(0.4, 8, "f");
+//                armServo.setPosition(1.0);
+//                sleep(2000);
+//                encoderDrive(0.4, 16, "l");
+                break;
+        }
+
+
+
+
+//        while (opModeIsActive()) {
+
+
+//                case 2:
+//                    targetsSkyStone.activate();
+//
+//                    runtime.reset();
+//
+//                    while (runtime.time() < 1)
+//
+//                    targetVisible = false;
+//                    for (VuforiaTrackable trackable : allTrackables) {
+//                        if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
+//                            telemetry.addData("Visible Target", trackable.getName());
+//                            targetVisible = true;
+//
+//                            // getUpdatedRobotLocation() will return null if no new information is available since
+//                            // the last time that call was made, or if the trackable is not currently visible.
+//                            OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
+//                            if (robotLocationTransform != null) {
+//                                lastLocation = robotLocationTransform;
+//                            }
+//                            break;
+//                        }
+//                    }
+//
+//                    // Provide feedback as to where the robot is located (if we know).
+//                    if (targetVisible) {
+//                        // express position (translation) of robot in inches.
+//                        VectorF translation = lastLocation.getTranslation();
+//                        telemetry.addData("Pos (in)", "{X, Y, Z} = %.1f, %.1f, %.1f",
+//                                translation.get(0) / mmPerInch, translation.get(1) / mmPerInch, translation.get(2) / mmPerInch);
+//
+//                        // express the rotation of the robot in degrees.
+//                        Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
+//                        telemetry.addData("Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", rotation.firstAngle, rotation.secondAngle, rotation.thirdAngle);
+//                        telemetry.update();
+//                        block = 16;
+//                        encoderDrive(0.2,1,"b");
+//                        encoderDrive(0.2, 1, "r");
+//                    }
+//                    else {
+//                        telemetry.addData("Visible Target", "none");
+//                        encoderDrive(0.2, 7, "f");
+//                        runtime.reset();
+//
+//                        while (runtime.time() < 1)
+//
+//                        for (VuforiaTrackable trackable : allTrackables) {
+//                            if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
+//                                telemetry.addData("Visible Target", trackable.getName());
+//                                targetVisible = true;
+//
+//                                // getUpdatedRobotLocation() will return null if no new information is available since
+//                                // the last time that call was made, or if the trackable is not currently visible.
+//                                OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
+//                                if (robotLocationTransform != null) {
+//                                    lastLocation = robotLocationTransform;
+//                                }
+//                                break;
+//                            }
+//                        }
+//
+//                        if (targetVisible) {
+//                            // express position (translation) of robot in inches.
+//                            VectorF translation = lastLocation.getTranslation();
+//                            telemetry.addData("Pos (in)", "{X, Y, Z} = %.1f, %.1f, %.1f",
+//                                    translation.get(0) / mmPerInch, translation.get(1) / mmPerInch, translation.get(2) / mmPerInch);
+//
+//                            // express the rotation of the robot in degrees.
+//                            Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
+//                            telemetry.addData("Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", rotation.firstAngle, rotation.secondAngle, rotation.thirdAngle);
+//                            telemetry.update();
+//                            block = 8;
+//                            encoderDrive(0.2, 1, "r");
+//                        }
+//                        else {
+//                            telemetry.addData("Visible Target", "none");
+//                            encoderDrive(0.2, 6, "f");
+//                            encoderDrive(0.2, 1, "r");
+//
+//
+//                        }
+//                    }
+//
+//
+//                    statusNum++;
+//
+//                case 3:
+//
+//                    armServo.setPosition(0);
+//                    grabServo.setPosition(1.0);
+//                    sleep(2150);
+//
+//
+//                    grabServo.setPosition(0.5);
+//                    armServo.setPosition(0.5);
+//                    statusNum++;
+//                case 4:
+//                    encoderDrive(0.2, 2, "r");
+//                    grabServo.setPosition(0);
+//                    sleep(2300);
+//                    grabServo.setPosition(0.3);
+//                    armServo.setPosition(1.0);
+//                    sleep(2200);
+//                    armServo.setPosition(0.5);
+//                    statusNum++;
+//                case 5:
+//                    encoderDrive(0.3, 3, "l");
+//                    encoderDrive(0.5, 68 + block, "f");
+//                    encoderDrive(0.3, 6, "r");
+//
+//
+//                    armServo.setPosition(0);
+//                    sleep(2200);
+//                    armServo.setPosition(0.5);
+//                    grabServo.setPosition(1.0);
+//                    sleep(1000);
+//                    grabServo.setPosition(0.5);
+//                    armServo.setPosition(1.0);
+//                    sleep(2200);
+//                    armServo.setPosition(0.5);
+//                    encoderDrive(0.3, 9, "l");
+//                    encoderDrive(0.5, 31, "b");
+//                    statusNum++;
+//                default:
+//                    break;
+//            }
+
+//            telemetry.addData("Servo", "value (%f)", angles.firstAngle);
+//            telemetry.update();
+//        }
+
+//        while (angles.firstAngle < 86) {
+//            angles = imu.getAngularOrientation().toAxesReference(AxesReference.INTRINSIC).toAxesOrder(AxesOrder.ZYX);
+//        }
+//        leftDrive.setPower(0);
+//        rightDrive.setPower(0);
+//        retractFromLander();
+//        encoderDrive(DRIVE_SPEED,  4,  4);
+
     }
 
-    /*
+    String formatAngle(AngleUnit angleUnit, double angle) {
+        return formatDegrees(AngleUnit.DEGREES.fromUnit(angleUnit, angle));
+    }
 
-    Lateral drive function, takes "f","b","r","l" for directions.
-
-    */
+    String formatDegrees(double degrees){
+        return String.format(Locale.getDefault(), "%.1f", AngleUnit.DEGREES.normalize(degrees));
+    }
 
     public void encoderDrive(double speed, double inches, String direction) {
         // Ensure that the opmode is still active
@@ -438,4 +568,6 @@ public class RedAuton extends LinearOpMode {
             statusNum++;
         }
     }
+
+
 }

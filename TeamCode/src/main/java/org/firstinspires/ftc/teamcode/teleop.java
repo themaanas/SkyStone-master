@@ -34,7 +34,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
@@ -57,8 +59,10 @@ public class teleop extends LinearOpMode {
 
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
-    private DcMotor leftFront, rightFront, leftRear, rightRear;
-    private Servo armServo, grabServo;
+    private DcMotor leftFront, rightFront, leftRear, rightRear, liftMotor, rightIntake, leftIntake;
+    private Servo armServo, rightArmServo, liftServo;
+    private TouchSensor limitSwitch;
+
 
     @Override
     public void runOpMode() {
@@ -70,45 +74,59 @@ public class teleop extends LinearOpMode {
         rightFront = hardwareMap.get(DcMotor.class, "rightFront");
         leftRear = hardwareMap.get(DcMotor.class, "leftRear");
         rightRear = hardwareMap.get(DcMotor.class, "rightRear");
-        armServo = hardwareMap.get(Servo.class, "servo");
-        grabServo = hardwareMap.get(Servo.class,"grabServo");
+        liftMotor = hardwareMap.get(DcMotor.class, "lift");
+        rightIntake = hardwareMap.get(DcMotor.class, "rightCore");
+        leftIntake = hardwareMap.get(DcMotor.class, "leftCore");
+        armServo = hardwareMap.get(Servo.class, "arm");
+        rightArmServo = hardwareMap.get(Servo.class, "right");
+        liftServo = hardwareMap.get(Servo.class, "liftServo");
+        limitSwitch = hardwareMap.get(TouchSensor.class, "switch");
+
+        // set the digital channel to input.
+//        armServo = hardwareMap.get(Servo.class, "servo");
+//        grabServo = hardwareMap.get(Servo.class,"grabServo");
 
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        liftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        leftIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
 
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
 
         runtime.reset();
 
+        boolean goDown = false;
+
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
-
-            if (gamepad1.y)
-                armServo.setPosition(1.0);
-            else if (gamepad1.a)
-                armServo.setPosition(0);
-            else
-                //The value 0.523 is the value to make the servo hold its position.
-                armServo.setPosition(0.523);
-
-            if (gamepad1.x)
-                grabServo.setPosition(1.0);
-            else if (gamepad1.b)
-                grabServo.setPosition(0);
-            else
-                //Same with above, this makes it hold its position.
-                grabServo.setPosition(0.50);
+//
+//            if (gamepad1.y)
+//                armServo.setPosition(1.0);
+//            else if (gamepad1.a)
+//                armServo.setPosition(0);
+//            else
+//                //The value 0.523 is the value to make the servo hold its position.
+//                armServo.setPosition(0.523);
+//
+//            if (gamepad1.x)
+//                grabServo.setPosition(1.0);
+//            else if (gamepad1.b)
+//                grabServo.setPosition(0);
+//            else
+//                //Same with above, this makes it hold its position.
+//                grabServo.setPosition(0.50);
 
             double r = Math.hypot(gamepad1.left_stick_x, -gamepad1.left_stick_y);
-            double robotAngle = Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4;
             double rightX = gamepad1.right_stick_x;
-            double v1 = r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) + Math.PI / 4) + gamepad1.right_stick_x;
-            double v2 = -r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4) + gamepad1.right_stick_x;
-            double v3 = r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4) + gamepad1.right_stick_x;
-            double v4 = -r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) + Math.PI / 4) + gamepad1.right_stick_x;
+            double v1 = -r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) + Math.PI / 4) + rightX;
+            double v2 = r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4) + rightX;
+            double v3 = -r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4) + rightX;
+            double v4 = r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) + Math.PI / 4) + rightX;
 
 
             if (gamepad1.right_bumper) {
@@ -117,11 +135,65 @@ public class teleop extends LinearOpMode {
                 v3 /= 0.5;
                 v4 /= 0.5;
             }
+            if (gamepad1.x) {
+                armServo.setPosition(1.0);
+                rightArmServo.setPosition(0);
+                sleep(1000);
+            } else if (gamepad1.b) {
+                armServo.setPosition(0);
+                rightArmServo.setPosition(1.0);
+                sleep(1000);
+            }
 
+            double liftPower = 0;
+            if (gamepad1.y) {
+                liftPower = 0.7;
+            } else if (gamepad1.a && !limitSwitch.isPressed()) {
+                liftPower = -0.7;
+            }
+
+
+            if (gamepad1.dpad_down) {
+                goDown = true;
+            }
+            if (goDown) {
+                liftPower = -0.7;
+            }
+
+            double intakePower = 0;
+            if (gamepad1.right_trigger > 0) {
+                intakePower = -1;
+            } else if (gamepad1.left_trigger > 0) {
+                intakePower = 1;
+            }
+
+
+            // 0 is open, 1 is close, 0.72 is almost close
+
+            if (gamepad1.dpad_left) {
+                liftServo.setPosition(0.4);
+                sleep(500);
+            } else if (gamepad1.dpad_up) {
+                liftServo.setPosition(0.65);
+                sleep(500);
+            } else if (gamepad1.dpad_right) {
+
+                liftServo.setPosition(1.0);
+                sleep(500);
+            }
+            if (limitSwitch.isPressed()) {
+
+                goDown = false;
+            }
             leftFront.setPower(v1);
             rightFront.setPower(v2);
             leftRear.setPower(v3);
             rightRear.setPower(v4);
+            liftMotor.setPower(liftPower);
+            rightIntake.setPower(intakePower);
+            leftIntake.setPower(-intakePower);
+            telemetry.addData("Digital Touch", limitSwitch.isPressed());
+            telemetry.addData("Digital Name", limitSwitch.getDeviceName());
 
 
             telemetry.addData("coords", "x (%.2f), y (%.2f)", gamepad1.left_stick_x, -gamepad1.left_stick_y);

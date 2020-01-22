@@ -56,7 +56,6 @@ public class intakeTeleop extends LinearOpMode {
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
     private DcMotor left, right;
-    private CRServo mainServo;
 
     @Override
     public void runOpMode() {
@@ -66,7 +65,6 @@ public class intakeTeleop extends LinearOpMode {
         // Initialize the hardware variables.
         left  = hardwareMap.get(DcMotor.class, "left");
         right = hardwareMap.get(DcMotor.class, "right");
-        mainServo = hardwareMap.get(CRServo.class, "servo");
 
         left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -78,21 +76,44 @@ public class intakeTeleop extends LinearOpMode {
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
-
-            left.setPower(0);
-            right.setPower(0);
-            mainServo.setPower(0);
-            if (gamepad1.y) {
-                left.setPower(1.0);
-                right.setPower(-1.0);
-            } else if (gamepad1.a) {
-                left.setPower(-1.0);
-                right.setPower(1.0);
-            } else if (gamepad1.b) {
-                mainServo.setPower(0.7);
-            } else if (gamepad1.x) {
-                mainServo.setPower(-0.7);
-            }
+//            double leftPower = 0;
+//            double rightPower = 0;
+//            if (gamepad1.y) {
+//                leftPower = 2.0;
+//                rightPower = -2.0;
+//            } else if (gamepad1.a) {
+//                leftPower = -2.0;
+//                rightPower = 2.0;
+//            }
+//            left.setPower(leftPower);
+//            right.setPower(rightPower);
+//            int leftPower = 0;
+//            int rightPower = 0;
+//            int servoPower = 0;
+//
+//            //left.setPower(0);
+//            //right.setPower(0);
+//            //mainServo.setPower(0);
+//            if (gamepad1.y) {
+//                leftPower = 1.0;
+//                rightPower = -1.0;
+//                //left.setPower(1.0);
+//                //right.setPower(-1.0);
+//            } else if (gamepad1.a) {
+//                leftPower = -1.0;
+//                rightPower = 1.0;
+//                //left.setPower(-1.0);
+//                //right.setPower(1.0);
+//            } else if (gamepad1.b) {
+//                servoPower = 0.7;
+//                //mainServo.setPower(0.7);
+//            } else if (gamepad1.x) {
+//                servoPower = -0.7;
+//                //mainServo.setPower(-0.7);
+//            }
+//            left.setPower(leftPower);
+//            right.setPower(rightPower);
+//            mainServo.setPower(servoPower);
         }
     }
 }

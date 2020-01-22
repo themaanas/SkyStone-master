@@ -130,10 +130,10 @@ public class teleop extends LinearOpMode {
 
 
             if (gamepad1.right_bumper) {
-                v1 /= 0.5;
-                v2 /= 0.5;
-                v3 /= 0.5;
-                v4 /= 0.5;
+                v1 /= 2;
+                v2 /= 2;
+                v3 /= 2;
+                v4 /= 2;
             }
             if (gamepad1.x) {
                 armServo.setPosition(1.0);
@@ -153,7 +153,7 @@ public class teleop extends LinearOpMode {
             }
 
 
-            if (gamepad1.dpad_down) {
+            if (gamepad1.dpad_down && !limitSwitch.isPressed()) {
                 goDown = true;
             }
             if (goDown) {

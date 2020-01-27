@@ -60,7 +60,7 @@ public class teleop extends LinearOpMode {
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
     private DcMotor leftFront, rightFront, leftRear, rightRear, liftMotor, rightIntake, leftIntake;
-    private Servo armServo, rightArmServo, liftServo;
+    private Servo armServo, rightArmServo, liftServo, foundation1, foundation2;
     private TouchSensor limitSwitch;
 
 
@@ -80,6 +80,9 @@ public class teleop extends LinearOpMode {
         armServo = hardwareMap.get(Servo.class, "arm");
         rightArmServo = hardwareMap.get(Servo.class, "right");
         liftServo = hardwareMap.get(Servo.class, "liftServo");
+
+        foundation1 = hardwareMap.get(Servo.class, "foundation1");
+        foundation2 = hardwareMap.get(Servo.class, "foundation2");
         limitSwitch = hardwareMap.get(TouchSensor.class, "switch");
 
         // set the digital channel to input.
@@ -94,6 +97,8 @@ public class teleop extends LinearOpMode {
         leftIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        liftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        liftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
@@ -101,9 +106,19 @@ public class teleop extends LinearOpMode {
         runtime.reset();
 
         boolean goDown = false;
+        boolean pressed = true;
+        boolean firstTime = true;
+        int position = -1;
+        int[] positions = {966, 1000};
+
+        boolean foundationPress = true;
 
         // run until the end of the match (driver presses STOP)
+
+        //966 = position 1
+        //
         while (opModeIsActive()) {
+
 //
 //            if (gamepad1.y)
 //                armServo.setPosition(1.0);
@@ -128,13 +143,8 @@ public class teleop extends LinearOpMode {
             double v3 = -r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4) + rightX;
             double v4 = r * Math.sin(Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) + Math.PI / 4) + rightX;
 
+            double liftPower = 0;
 
-            if (gamepad1.right_bumper) {
-                v1 /= 2;
-                v2 /= 2;
-                v3 /= 2;
-                v4 /= 2;
-            }
             if (gamepad1.x) {
                 armServo.setPosition(1.0);
                 rightArmServo.setPosition(0);
@@ -145,11 +155,11 @@ public class teleop extends LinearOpMode {
                 sleep(1000);
             }
 
-            double liftPower = 0;
+
             if (gamepad1.y) {
-                liftPower = 0.7;
+                liftPower = 1.0;
             } else if (gamepad1.a && !limitSwitch.isPressed()) {
-                liftPower = -0.7;
+                liftPower = -1.0;
             }
 
 
@@ -181,10 +191,59 @@ public class teleop extends LinearOpMode {
                 liftServo.setPosition(1.0);
                 sleep(500);
             }
+
+            if (gamepad1.left_bumper) {
+                foundationPress = !foundationPress;
+                if (foundationPress) {
+                    foundation1.setPosition(0.5);
+                    foundation2.setPosition(0.6);
+                } else {
+                    foundation1.setPosition(1.0);
+                    foundation2.setPosition(0);
+                }
+
+                sleep(1000);
+                telemetry.addData("pos", foundationPress);
+                telemetry.update();
+            }
+
+//            if (gamepad2.a && !pressed) {
+//                pressed = true;
+//                position = 0;
+//            } else {
+//                pressed = false;
+//            }
+//
+//            if (position != -1) {
+//                if (positions[position] > Math.abs(liftMotor.getCurrentPosition())) {
+//                    liftPower = 0.5;
+//                } else if (positions[position] < Math.abs(liftMotor.getCurrentPosition())) {
+//                    liftPower = -0.5;
+//                } else if (Math.abs(positions[position] - Math.abs(liftMotor.getCurrentPosition())) < 60) {
+//                    position = -1;
+//                }
+//            }
+
             if (limitSwitch.isPressed()) {
+//                if (firstTime) {
+//                    sleep(200);
+//                    liftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+//                    liftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+//                    firstTime = false;
+//                }
 
                 goDown = false;
             }
+
+            if (gamepad1.right_bumper) {
+                v1 /= 2;
+                v2 /= 2;
+                v3 /= 2;
+                v4 /= 2;
+                liftPower /= 2;
+            }
+
+
             leftFront.setPower(v1);
             rightFront.setPower(v2);
             leftRear.setPower(v3);
@@ -192,9 +251,10 @@ public class teleop extends LinearOpMode {
             liftMotor.setPower(liftPower);
             rightIntake.setPower(intakePower);
             leftIntake.setPower(-intakePower);
-            telemetry.addData("Digital Touch", limitSwitch.isPressed());
-            telemetry.addData("Digital Name", limitSwitch.getDeviceName());
+//            telemetry.addData("Digital Touch", limitSwitch.isPressed());
+//            telemetry.addData("Digital Name", limitSwitch.getDeviceName());
 
+            telemetry.addData("Lift", "value (%d)", liftMotor.getCurrentPosition());
 
             telemetry.addData("coords", "x (%.2f), y (%.2f)", gamepad1.left_stick_x, -gamepad1.left_stick_y);
             telemetry.update();

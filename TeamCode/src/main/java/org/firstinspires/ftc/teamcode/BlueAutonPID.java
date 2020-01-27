@@ -40,9 +40,9 @@ import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.YZX;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesReference.EXTRINSIC;
 import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer.CameraDirection.BACK;
 
-@Autonomous(name="Drive Avoid PID", group="Exercises")
+@Autonomous(name="Blue Auton PID", group="Exercises")
 //@Disabled
-public class PIDAutonTest extends LinearOpMode
+public class BlueAutonPID extends LinearOpMode
 {
 
     private static final String VUFORIA_KEY =
@@ -101,83 +101,80 @@ public class PIDAutonTest extends LinearOpMode
 
 
         //COMMENT BELOW FOR OTHER AUTON
-        strafe(-4, 0.5);
+//        strafe(-4, 0.5);
 
 
         String stonePos = getSkystonePosition();
         switch (stonePos) {
             case "left":
-                strafe(11, 0.5);
-                drive(-12, 0.3);
+                strafe(2, 0.5);
+                drive(-10, 0.3);
                 armServo.setPosition(0);
                 sleep(1000);
                 drive(7, 0.5);
-                rotate(-90, 0.8);
-                drive(-56, 0.6);
-                armServo.setPosition(0.5);
-                sleep(1000);
-                drive(69, 0.55);
                 rotate(90, 0.8);
-                strafe(10, 0.5);
-                drive(-9, 0.4);
-                armServo.setPosition(0);
-                sleep(1000);
-                drive(7, 0.5);
-                strafe(-8, 0.5);
-                rotate(-90, 0.8);
-                drive(-67, 0.6);
+                drive(-50, 0.6);
                 armServo.setPosition(0.5);
                 sleep(1000);
-                drive(10, 0.5);
-                break;
-            case "middle":
-
-
-                strafe(12, 0.5);
-                drive(-12, 0.3);
+                drive(65, 0.6);
+                rotate(-90, 0.8);
+                drive(-7, 0.3);
                 rightArmServo.setPosition(1.0);
                 sleep(1000);
-                drive(9, 0.5);
-                rotate(-90, 0.8);
-                drive(-62, 0.6);
+                drive(7, 0.5);
+                rotate(90, 0.8);
+                drive(-65, 0.6);
                 rightArmServo.setPosition(0.5);
                 sleep(1000);
-                drive(77, 0.6);
-                rotate(90, 0.8);
-                drive(-7, 0.3);
+                drive(20, 0.4);
+                break;
+            case "middle":
+                strafe(-9, 0.5);
+                drive(-13, 0.3);
                 armServo.setPosition(0);
                 sleep(1000);
-                drive(7, 0.5);
-                rotate(-90, 0.8);
-                drive(-75, 0.6);
-                armServo.setPosition(1.0);
+                drive(8, 0.5);
+                rotate(90, 0.8);
+                drive(-58, 0.6);
+                armServo.setPosition(0.5);
                 sleep(1000);
-                drive(20, 0.5);
-//                strafe(8, 0.5);
+                drive(74, 0.6);
+                rotate(-90, 0.8);
+                drive(-8, 0.3);
+                rightArmServo.setPosition(1.0);
+                sleep(1000);
+                drive(8, 0.5);
+                rotate(90, 0.8);
+                drive(-73, 0.6);
+                rightArmServo.setPosition(0.5);
+                sleep(1000);
+                drive(20, 0.4);
                 break;
 
 
             case "right":
-                strafe(3, 0.5);
+                strafe(-6, 0.5);
                 drive(-12, 0.3);
                 rightArmServo.setPosition(1.0);
                 sleep(1000);
-                drive(7, 0.5);
-                rotate(-90, 0.8);
-                drive(-55, 0.6);
+                drive(9, 0.5);
+                rotate(90, 0.8);
+                drive(-58, 0.6);
                 rightArmServo.setPosition(0.5);
                 sleep(1000);
-                drive(70, 0.6);
-                rotate(90, 0.8);
-                drive(-10, 0.3);
-                armServo.setPosition(0);
-                sleep(1000);
-                drive(8, 0.5);
+                drive(76, 0.6);
                 rotate(-90, 0.8);
-                drive(-63, 0.6);
-                armServo.setPosition(1.0);
+                strafe(-8, 0.5);
+                drive(-9, 0.3);
+                rightArmServo.setPosition(1.0);
                 sleep(1000);
-                drive(20, 0.5);
+                drive(9, 0.5);
+                strafe(6, 0.5);
+                rotate(90, 0.8);
+                drive(-73, 0.6);
+                rightArmServo.setPosition(0.5);
+                sleep(1000);
+                drive(20, 0.4);
                 break;
         }
     }
@@ -187,6 +184,7 @@ public class PIDAutonTest extends LinearOpMode
      */
     private void resetAngle()
     {
+
         lastAngles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
 
         globalAngle = 0;
@@ -358,8 +356,8 @@ public class PIDAutonTest extends LinearOpMode
 
             if (motorPower > power) {
                 motorPower = power;
-            } else if (Math.abs(motorPower) < 0.1) {
-                motorPower = 0.1;
+            } else if (Math.abs(motorPower) < 0.08) {
+                motorPower = 0.08;
             }
 
             leftFront.setPower((forward * motorPower) + correction);
@@ -591,7 +589,7 @@ public class PIDAutonTest extends LinearOpMode
     }
 
     private String getSkystonePosition() {
-        String stonePosition = "left";
+        String stonePosition = "right";
 
         targetsSkyStone.activate();
 
@@ -625,9 +623,9 @@ public class PIDAutonTest extends LinearOpMode
                     translation.get(0) / mmPerInch, translation.get(1) / mmPerInch, translation.get(2) / mmPerInch);
             telemetry.update();
             if (translation.get(1) < 0) {
-                stonePosition = "middle";
+                stonePosition = "left";
             } else if (translation.get(1) > 0) {
-                stonePosition = "right";
+                stonePosition = "middle";
             }
         }
 

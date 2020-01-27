@@ -69,6 +69,7 @@ public class PIDController
                 m_totalError += m_error;
 
             // Perform the primary PID calculation
+
             m_result = m_P * m_error + m_I * m_totalError + m_D * (m_error - m_prevError);
 
             // Set the current error to the previous error for the next cycle.
